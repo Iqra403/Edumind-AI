@@ -50,6 +50,7 @@ JWT_SECRET=replace-this-with-a-long-random-secret
 JWT_EXPIRE=7d
 FRONTEND_URL=http://localhost:5173
 GEMINI_API_KEY=
+GROQ_API_KEY=
 ```
 
 Start the API:
@@ -98,7 +99,7 @@ Set-Content Frontend/.env "VITE_API_URL=http://localhost:8000"
 2. Confirm <http://localhost:8000/> returns `Backend is running`.
 3. Open the frontend and register a test account.
 4. Sign in and confirm the dashboard loads.
-5. Configure `GEMINI_API_KEY` only when testing AI-generation features.
+5. Configure `GROQ_API_KEY` only when testing AI-generation features. You can also enter a GroqCloud key in **Profile Settings → Groq AI** after signing in. That browser-only setting is kept in the current session and sent only with AI requests; the server environment variable remains the fallback for all users.
 
 ## Development checks
 
@@ -117,12 +118,12 @@ The backend currently provides start and development scripts but does not yet in
 - **MongoDB connection error:** verify that MongoDB is running and that `MONGODB_URI` is reachable.
 - **Port already in use:** change `PORT` and update `VITE_API_URL` to match.
 - **CORS error:** make sure `FRONTEND_URL` exactly matches the frontend origin.
-- **AI returns `503`:** this is expected until `GEMINI_API_KEY` is configured and the backend is restarted.
+- **AI returns `503`:** add a key in Profile Settings → Gemini AI, or configure `GEMINI_API_KEY` in the backend environment and restart the server.
 - **Frontend uses an old API URL:** update `Frontend/.env` and restart Vite.
 
 ## Security
 
-Never commit `Backend/.env`, API keys, JWT secrets, uploaded documents, or other credentials. Please report reproducible security issues privately to the repository maintainer rather than opening a public issue with sensitive details.
+Never commit `Backend/.env`, API keys, JWT secrets, uploaded documents, or other credentials. The Profile Settings key is stored in browser session storage, not in the database; use HTTPS and clear the session when finished. Please report reproducible security issues privately to the repository maintainer rather than opening a public issue with sensitive details.
 
 ## Contributing
 

@@ -4,7 +4,7 @@ import Button from '../../components/common/Button'
 import Spinner from '../../components/common/Spinner'
 import authService from "../../services/authService"
 import toast from "react-hot-toast"
-import {User, Mail,Lock} from "lucide-react"
+import {User, Mail,Lock, Eye, EyeOff, KeyRound, Trash2} from "lucide-react"
 
 const ProfilePage = () => {
   
@@ -15,6 +15,8 @@ const ProfilePage = () => {
  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
    const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [groqApiKey, setGroqApiKey] = useState(() => sessionStorage.getItem("groqApiKey") || "");
+  const [showGroqApiKey, setShowGroqApiKey] = useState(false);
 
 
 
@@ -59,6 +61,14 @@ const ProfilePage = () => {
     }
    }
 
+   const handleSaveGroqKey = (e) => {
+    e.preventDefault();
+    const value = groqApiKey.trim();
+    if (value) sessionStorage.setItem("groqApiKey", value);
+    else sessionStorage.removeItem("groqApiKey");
+    toast.success(value ? "Groq API key saved for this browser session" : "Groq API key removed");
+   };
+
    if(loading){
     return <Spinner/>
    }
@@ -95,6 +105,52 @@ const ProfilePage = () => {
                 </div>
             </div>
           </div>
+        </div>
+        <div className="bg-white border border-neutral-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-2">Groq AI</h3>
+          <p className="text-sm text-neutral-600 mb-4">
+            Paste a key from GroqCloud to enable quizzes, flashcards, summaries, and chat.
+            It is kept only in this browser session and sent over your configured API connection.
+          </p>
+          <form onSubmit={handleSaveGroqKey} className="space-y-3">
+            <label className="block text-xs font-medium text-neutral-700" htmlFor="groq-api-key">
+              Groq API key
+            </label>
+            <div className="relative">
+              <KeyRound className="absolute left-3 top-3 h-4 w-4 text-neutral-400" aria-hidden="true" />
+              <input
+              id="groq-api-key"
+              type={showGroqApiKey ? "text" : "password"}
+                autoComplete="off"
+              value={groqApiKey}
+              onChange={(e) => setGroqApiKey(e.target.value)}
+              placeholder="gsk_..."
+                className="w-full h-10 pl-9 pr-11 border border-neutral-200 rounded-lg bg-neutral-50 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowGroqApiKey((visible) => !visible)}
+                className="absolute right-2 top-2 p-1 text-neutral-500 hover:text-neutral-900"
+                aria-label={showGroqApiKey ? "Hide Groq API key" : "Show Groq API key"}
+              >
+                {showGroqApiKey ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setGroqApiKey("");
+                  sessionStorage.removeItem("groqApiKey");
+                  toast.success("Groq API key removed");
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-1.5" /> Clear
+              </Button>
+              <Button type="submit">Save Groq key</Button>
+            </div>
+          </form>
         </div>
         {/* change password form */}
         <div className="bg-white border border-neutral-200 rounded-lg p-6">

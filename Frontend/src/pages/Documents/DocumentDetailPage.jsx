@@ -10,6 +10,7 @@ import PageHeader from '../../components/common/PageHeader';
 import Tabs from '../../components/common/Tabs';
 import AIActions from '../../components/ai/AIActions';
 import QuizManager from '../../components/quizzes/QuizManager';
+import { BASE_URL } from '../../utils/apiPaths';
 
 const DocumentDetailPage = () => {
   const { id } = useParams();
@@ -39,7 +40,7 @@ const DocumentDetailPage = () => {
   if (!document?.data?.filePath) return null;
 
   const filePath = document.data.filePath;
-  const baseUrl = "https://edumind-ai-agm0.onrender.com";
+  const baseUrl = BASE_URL.replace(/\/$/, '');
 
   // Strip any hardcoded origin (localhost or old URL) and keep only the path
   try {

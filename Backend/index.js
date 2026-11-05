@@ -27,7 +27,7 @@ app.use(
   cors({
     origin: process.env.FRONTEND_URL || "https://edu-mind-ai-psi.vercel.app",
     methods: ["GET", "PUT", "POST", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Gemini-API-Key", "X-Groq-API-Key"],
     credentials: true,
   })
 );

@@ -4,13 +4,14 @@ import { GoogleGenAI, createPartFromBase64, createPartFromUri } from '@google/ge
 
 dotenv.config();
 
-const ai = process.env.GEMINI_API_KEY
+const defaultAi = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
 
-const requireGemini = () => {
+const requireGemini = (apiKey) => {
+  const ai = apiKey ? new GoogleGenAI({ apiKey }) : defaultAi;
   if (!ai) {
-    const error = new Error('AI features are disabled. Set GEMINI_API_KEY to enable them.');
+    const error = new Error('AI features are disabled. Add a Gemini API key in Profile Settings or set GEMINI_API_KEY on the server.');
     error.statusCode = 503;
     throw error;
   }
@@ -18,9 +19,8 @@ const requireGemini = () => {
 };
 
 // ─── Model config ────────────────────────────────────────────────────────────
-// gemini-2.5-flash  → fast + accurate (recommended)
-// gemini-2.5-pro    → best accuracy, slower, higher cost
-const MODEL = 'gemini-2.5-flash';
+// Keep this aligned with the currently supported Gemini API model.
+const MODEL = 'gemini-3.8-flash';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -80,9 +80,9 @@ const normalizeDifficulty = (difficulty = 'medium') => {
 
 // ─── PDF upload ───────────────────────────────────────────────────────────────
 
-export const uploadPdfAndCreatePart = async (filePath, displayName = 'document.pdf') => {
+export const uploadPdfAndCreatePart = async (filePath, displayName = 'document.pdf', apiKey) => {
   try {
-    const uploadedFile = await requireGemini().files.upload({
+    const uploadedFile = await requireGemini(apiKey).files.upload({
       file: filePath,
       config: {
         mimeType: 'application/pdf',
@@ -102,7 +102,7 @@ export const uploadPdfAndCreatePart = async (filePath, displayName = 'document.p
     if (detail.includes('PERMISSION_DENIED') || detail.toLowerCase().includes('api key')) {
       uploadError.statusCode = 502;
       uploadError.message =
-        'Gemini API key is invalid or expired. Please update your GEMINI_API_KEY in .env.';
+        'Gemini API key is invalid or expired. Update the key in Profile Settings or GEMINI_API_KEY in .env.';
     }
 
     throw uploadError;
@@ -119,7 +119,7 @@ export const createPartFromLocalPdf = async (filePath) => {
 
 // ─── Flashcards ───────────────────────────────────────────────────────────────
 
-export const generateFlashcards = async (source, count = 10) => {
+export const generateFlashcards = async (source, count = 10, apiKey) => {
   const prompt = `You are an expert academic tutor specializing in medicine, biology, biochemistry, and anatomy.
 
 Your task is to generate exactly ${count} high-quality flashcards based STRICTLY on the content of the attached document.
@@ -153,7 +153,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
 ]`;
 
   try {
-    const response = await requireGemini().models.generateContent({
+    const response = await requireGemini(apiKey).models.generateContent({
       model: MODEL,
       contents: buildContents(prompt, source, 40000),
     });
@@ -184,7 +184,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
 
 // ─── Quiz ─────────────────────────────────────────────────────────────────────
 
-export const generateQuiz = async (source, numQuestions = 5) => {
+export const generateQuiz = async (source, numQuestions = 5, apiKey) => {
   const prompt = `You are an expert academic examiner specializing in medicine, biology, biochemistry, and anatomy.
 
 Your task is to generate exactly ${numQuestions} multiple-choice questions (MCQs) based STRICTLY on the attached document.
@@ -221,7 +221,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
 ]`;
 
   try {
-    const response = await requireGemini().models.generateContent({
+    const response = await requireGemini(apiKey).models.generateContent({
       model: MODEL,
       contents: buildContents(prompt, source, 40000),
     });
@@ -278,7 +278,7 @@ Return ONLY a valid JSON array, no markdown, no explanation:
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
 
-export const generateSummary = async (source) => {
+export const generateSummary = async (source, apiKey) => {
   const prompt = `You are an expert academic summarizer.
 
 Summarize the attached document clearly and accurately based ONLY on its content.
@@ -302,7 +302,7 @@ Highlight any specific facts, values, clinical examples, or case studies mention
 Bullet list of the 5–10 most important takeaways for exam preparation.`;
 
   try {
-    const response = await requireGemini().models.generateContent({
+    const response = await requireGemini(apiKey).models.generateContent({
       model: MODEL,
       contents: buildContents(prompt, source, 40000),
     });
@@ -316,7 +316,7 @@ Bullet list of the 5–10 most important takeaways for exam preparation.`;
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 
-export const chatWithContext = async (question, chunks, source = null) => {
+export const chatWithContext = async (question, chunks, source = null, apiKey) => {
   const context = chunks.map((c, i) => `Chunk ${i + 1}:\n${c.content}`).join('\n\n');
 
   const prompt = `You are an expert academic tutor. Answer the user's question using ONLY the attached document and the provided context below.
@@ -333,7 +333,7 @@ Question: ${question}
 Answer:`;
 
   try {
-    const response = await requireGemini().models.generateContent({
+    const response = await requireGemini(apiKey).models.generateContent({
       model: MODEL,
       contents: buildContents(prompt, source, 30000),
     });
@@ -347,7 +347,7 @@ Answer:`;
 
 // ─── Explain Concept ──────────────────────────────────────────────────────────
 
-export const explainConcept = async (concept, context, source = null) => {
+export const explainConcept = async (concept, context, source = null, apiKey) => {
   const prompt = `You are an expert academic tutor.
 
 Explain the concept of "${concept}" using ONLY the attached document and the context provided below.
@@ -364,7 +364,7 @@ ${context.substring(0, 15000)}
 --- End Context ---`;
 
   try {
-    const response = await requireGemini().models.generateContent({
+    const response = await requireGemini(apiKey).models.generateContent({
       model: MODEL,
       contents: buildContents(prompt, source, 15000),
     });

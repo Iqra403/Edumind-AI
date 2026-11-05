@@ -4,6 +4,7 @@ import Quiz from "../models/Quiz.js";
 import ChatHistory from "../models/ChatHistory.js";
 import AiActionHistory from "../models/AiActionHistory.js";
 import * as geminiService from "../utils/geminiService.js";
+import * as groqService from "../utils/groqService.js";
 import { extractTextFromPDF } from "../utils/pdfParser.js";
 import { chunkText, findRelevantChunks } from "../utils/textChunker.js";
 import path from "path";
@@ -12,6 +13,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const documentsDir = path.join(__dirname, "../uploads/documents");
+const getAiService = (req) => req.get('x-groq-api-key') ? { service: groqService, apiKey: req.get('x-groq-api-key') } : { service: geminiService, apiKey: req.get('x-gemini-api-key') };
 
 const normalizeText = (text = "") =>
   text
@@ -47,7 +49,7 @@ const getLocalDocumentPath = (document) => {
   return path.join(documentsDir, fileName);
 };
 
-const getDocumentAiSource = async (document) => {
+const getDocumentAiSource = async (document, apiKey) => {
   let pdfPart = null;
   let extractedText = hasReadableExtractedText(document.extractedText) ? normalizeText(document.extractedText) : "";
 
@@ -77,7 +79,7 @@ const getDocumentAiSource = async (document) => {
   }
 
   if (allowGeminiFileUpload && !pdfPart && !extractedText) {
-    const { file, part } = await geminiService.uploadPdfAndCreatePart(localPath, document.fileName);
+    const { file, part } = await geminiService.uploadPdfAndCreatePart(localPath, document.fileName, apiKey);
     document.aiFileUri = file.uri || "";
     document.aiFileMimeType = file.mimeType || "application/pdf";
     document.aiFileName = file.name || "";
@@ -104,6 +106,7 @@ const getDocumentAiSource = async (document) => {
 
 export const generateFlashcards = async (req, res, next) => {
   try {
+    const { service: aiService, apiKey } = getAiService(req);
     const { documentId, count = 10 } = req.body;
 
     if (!documentId) {
@@ -121,8 +124,8 @@ console.log(documentId,req.user._id)
       return res.status(400).json({ success: false, error: 'Document not found or not ready', statusCode: 400 });
     }
 
-    const aiSource = await getDocumentAiSource(document);
-    const cards = await geminiService.generateFlashcards(aiSource, parseInt(count, 10));
+    const aiSource = await getDocumentAiSource(document, apiKey);
+    const cards = await aiService.generateFlashcards(aiSource, parseInt(count, 10), apiKey);
 
     if (!cards.length) {
       return res.status(400).json({
@@ -155,6 +158,7 @@ console.log(documentId,req.user._id)
 
 export const generateQuiz = async (req, res, next) => {
   try {
+    const { service: aiService, apiKey } = getAiService(req);
     const { documentId, numQuestions = 5, title } = req.body;
     const parsedQuestionCount = parseInt(numQuestions, 10);
     const normalizedQuestionCount = Math.min(
@@ -176,8 +180,8 @@ export const generateQuiz = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Document not found or not ready', statusCode: 404 });
     }
 
-    const aiSource = await getDocumentAiSource(document);
-    const questions = await geminiService.generateQuiz(aiSource, normalizedQuestionCount);
+    const aiSource = await getDocumentAiSource(document, apiKey);
+    const questions = await aiService.generateQuiz(aiSource, normalizedQuestionCount, apiKey);
 
     if (!questions.length) {
       return res.status(400).json({
@@ -210,6 +214,7 @@ export const generateQuiz = async (req, res, next) => {
 
 export const generateSummary = async (req, res, next) => {
   try {
+    const { service: aiService, apiKey } = getAiService(req);
     const { documentId } = req.body;
 
     if (!documentId) {
@@ -226,8 +231,8 @@ export const generateSummary = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Document not found or not ready', statusCode: 404 });
     }
 
-    const aiSource = await getDocumentAiSource(document);
-    const summary = await geminiService.generateSummary(aiSource);
+    const aiSource = await getDocumentAiSource(document, apiKey);
+    const summary = await aiService.generateSummary(aiSource, apiKey);
     await AiActionHistory.create({
       userId: req.user._id,
       documentId: document._id,
@@ -253,6 +258,7 @@ export const generateSummary = async (req, res, next) => {
 
 export const chat = async (req, res, next) => {
   try {
+    const { service: aiService, apiKey } = getAiService(req);
     const { documentId, question } = req.body;
 
     if (!documentId || !question || !question.trim()) {
@@ -269,7 +275,7 @@ export const chat = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Document not found or not ready', statusCode: 404 });
     }
 
-    const aiSource = await getDocumentAiSource(document);
+    const aiSource = await getDocumentAiSource(document, apiKey);
     const chunks = hasReadableExtractedText(document.extractedText)
       ? await findRelevantChunks(document.chunks || [], question, 3)
       : [];
@@ -288,7 +294,7 @@ export const chat = async (req, res, next) => {
       });
     }
 
-    const answer = await geminiService.chatWithContext(question, chunks, aiSource);
+    const answer = await aiService.chatWithContext(question, chunks, aiSource, apiKey);
 
     chatHistory.messages.push(
       {
@@ -325,6 +331,7 @@ export const chat = async (req, res, next) => {
 
 export const explainConcept = async (req, res, next) => {
   try {
+    const { service: aiService, apiKey } = getAiService(req);
     const { documentId, concept } = req.body;
 
     if (!documentId || !concept || !concept.trim()) {
@@ -341,13 +348,13 @@ export const explainConcept = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Document not found or not ready', statusCode: 404 });
     }
 
-    const aiSource = await getDocumentAiSource(document);
+    const aiSource = await getDocumentAiSource(document, apiKey);
     const relevantChunks = hasReadableExtractedText(document.extractedText)
       ? await findRelevantChunks(document.chunks || [], concept, 3)
       : [];
     const context = relevantChunks.map(c => c.content).join('\n\n');
 
-    const explanation = await geminiService.explainConcept(concept, context, aiSource);
+    const explanation = await aiService.explainConcept(concept, context, aiSource, apiKey);
     await AiActionHistory.create({
       userId: req.user._id,
       documentId: document._id,

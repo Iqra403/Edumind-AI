@@ -46,7 +46,7 @@ const Sidebar = ({isSidebarOpen, toggleSidebar}) => {
       <div className="flex items-center justify-between h-16 px-5 border-b border-slate-200/60 dark:border-[#2a2a2a]">
         
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-linear-to-br from-emerald-500 to-teal-500 dark:from-[#FF3CAC] dark:to-[#784BA0]">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-linear-to-br from-sky-500 to-indigo-600 shadow-lg shadow-sky-500/20">
             <BrainCircuit className="text-white" size={20} strokeWidth={2.5} />
           </div>
 
@@ -75,7 +75,7 @@ const Sidebar = ({isSidebarOpen, toggleSidebar}) => {
               `group flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200
               ${
                 isActive
-                  ? 'bg-linear-to-r from-emerald-500 to-teal-500 text-white shadow-lg dark:from-[#FF3CAC] dark:to-[#784BA0] dark:shadow-[#7A00FF]/30'
+                  ? 'bg-linear-to-r from-sky-500 to-indigo-600 text-white shadow-lg shadow-sky-500/20'
                   : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-[#1d1d1d] dark:hover:text-slate-100'
               }`
             }

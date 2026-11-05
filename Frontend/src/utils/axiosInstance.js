@@ -17,6 +17,10 @@ axiosInstance.interceptors.request.use(
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
+    const groqApiKey = sessionStorage.getItem("groqApiKey");
+    if (groqApiKey && config.url?.includes("/api/ai/")) {
+      config.headers["X-Groq-API-Key"] = groqApiKey;
+    }
     return config;
   },
   (error) => {
